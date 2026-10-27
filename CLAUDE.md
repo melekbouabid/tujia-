@@ -1,15 +1,28 @@
 # Tujya: project guide for Claude sessions
 
-Solo student project. Tujya is a medicine-safety app: scan two medicine boxes, check whether
-their active ingredients interact, and answer follow-up questions with cited sources.
+Solo student project. Tujya is a medicine-safety app: identify pills from a photo, check
+whether their active ingredients interact, and answer follow-up questions with cited sources.
 The repo started as "SynergyRx" (cancer drug-synergy data pipeline); that code is kept but is
 no longer the main goal. Roadmap and progress: [docs/ROADMAP.md](docs/ROADMAP.md).
 Remote: https://github.com/melekbouabid/tujia-.git
 
+## Mandatory rules for every session
+- **Before any step**, check which professor requirement it serves (the "Exigences des
+  modules" checklist at the top of README.md, mirrored in "Graded in two modules" below).
+  Never drop a requirement: if one becomes hard, reduce its scope and write the decision in
+  docs/DECISIONS.md, but keep it on the list.
+- **After every completed step**: update README.md (add a line to the "Journal de
+  progression", in French: date, task, what was done, files, results; tick the matching
+  "Exigences des modules" boxes only when the requirement is really met), update
+  docs/ROADMAP.md, then commit with a clear message and push. Never force push, never
+  rewrite history.
+- Never commit anything under `data/` (DVC only), never touch `.env` or `backend/app.db`.
+
 ## Graded in two modules
 
 **Module 1, Industrialisation Vision & MLOps** (defence = live technical demo)
-- Vision axis 3: object detection with YOLOv8/v11 (Ultralytics).
+- Vision: pill detection with YOLOv8/v11 (Ultralytics), then identification of each
+  detected pill by a classifier trained with transfer learning.
 - Async FastAPI REST API, Pydantic schemas, Swagger at `/docs`.
 - React app: image upload, webcam stream, live display of predictions and bounding boxes.
 - DVC (data versioning), MLflow (tracking + Model Registry), ONNX (optimised deployment),
@@ -20,15 +33,29 @@ Remote: https://github.com/melekbouabid/tujia-.git
 - Tool calling and MCP; LangChain and/or LangGraph.
 - Benchmark of retrieval and of answer generation; a web interface.
 
+## Data direction (since 2026-10-27)
+- **No personal photos.** Vision uses the public NLM **C3PI** pill image dataset
+  (Computational Photography Project for Pill Identification,
+  https://catalog.data.gov/dataset/computational-photography-project-for-pill-identification-c3pi,
+  files at https://data.lhncbc.nlm.nih.gov/public/Pills/). Licence ODbL; research and
+  development use only. Details: [docs/DATASET_C3PI.md](docs/DATASET_C3PI.md).
+- **Two stages**: (1) detect pills in the image (YOLO), (2) identify each detected pill
+  (classifier with transfer learning), limited to the 100-200 pills with the most images.
+  Class list: `config/pill_classes.csv`.
+- **ePillID** (https://arxiv.org/abs/2005.14288) is the reference benchmark to compare
+  against (it is built from C3PI images).
+- Chain: pill -> active ingredient(s) -> DDInter interactions.
+- RAG corpus: openFDA drug labels (https://open.fda.gov/apis/drug/label/), DDInter, PubMed.
+- The demo uses C3PI **test-split** images (never images the model trained on).
+
 ## What the app does
-1. **Scan**: photo or webcam of two medicine boxes; YOLO detects each box. Each medicine is
-   its own YOLO class (closed list of 10-15 in `config/medicines.csv`), so no OCR in the main
-   version (OCR = optional bonus for unknown boxes). Low confidence -> ask the user to confirm.
-2. **Check**: look up the two active ingredients in DDInter (connector exists in
-   `src/synergyrx_data`, disabled by default): severity, explanation, timing advice only if
-   the source gives it.
-3. **Ask**: LangGraph agent answers follow-ups with RAG over official leaflets, PubMed
-   abstracts and DDInter, citing sources. Tools: `identify_drugs(image)`,
+1. **Scan**: photo or webcam image of one or more pills; YOLO detects each pill, the
+   classifier identifies it among the closed class list. Low confidence -> ask the user to
+   confirm or pick from the top-5.
+2. **Check**: look up the active ingredients in DDInter (connector in
+   `src/synergyrx_data`): severity, explanation, timing advice only if the source gives it.
+3. **Ask**: LangGraph agent answers follow-ups with RAG over openFDA labels, PubMed
+   abstracts and DDInter, citing sources. Tools: `identify_pills(image)`,
    `check_interaction(a, b)`, `get_drug_info(drug)`, `search_literature(query, filters)`,
    optional `get_synergy`. Same tools via an MCP server (lower priority, at the end).
 4. **Bonus** (only if time remains): page with the existing cancer synergy data.
@@ -39,27 +66,31 @@ Remote: https://github.com/melekbouabid/tujia-.git
 - Always cite the source.
 - Never invent timing advice; only repeat what the source says.
 - Always show "information only, consult a pharmacist or doctor".
+- Pill identification is a suggestion, never a certainty: show the confidence.
 
 ## Tech stack
-- Vision: YOLOv8/v11 -> ONNX Runtime; annotation with Label Studio or Roboflow.
-- MLOps: MLflow, DVC, Docker Compose (backend, frontend, postgres, mlflow, ollama), GitHub Actions.
+- Vision: YOLOv8/v11 detection + YOLO classification (transfer learning) -> ONNX Runtime.
+  Own venv in `vision/.venv` (git-ignored).
+- MLOps: MLflow, DVC, Docker Compose (postgres + pgvector, mlflow; later backend, frontend,
+  ollama), GitHub Actions.
 - LLM: LangGraph + LangChain, Ollama local LLM (Mistral, Llama or Qwen), bge-m3 embeddings.
 - Retrieval: PostgreSQL + pgvector + BM25 hybrid search. Benchmark: RAGAS + Recall@k / MRR.
 - Backend: FastAPI (`backend/`, already has accounts, sessions, admin, catalog).
 - Frontend: React + Vite + TypeScript (`frontend/`, branded Tujya; predictions are still mock).
 
 ## Folder conventions
-- `backend/` FastAPI app and its tests; `frontend/` React app.
+- `backend/` FastAPI app and its tests; `frontend/` React app; `vision/` training and export.
 - `src/synergyrx_data/` existing data pipeline (connectors incl. DDInter, PubMed); `tests/` its tests.
-- `config/` hand-maintained lists, incl. `medicines.csv` (class_id,brand,ingredient,strength,form).
-- `data/` is git-ignored (some sources forbid redistribution). Images go under `data/vision/`,
-  tracked by DVC, never by git. RAG corpus also versioned with DVC.
-- `docs/` plans and reports: ROADMAP.md (progress), STATUS.md, DECISIONS.md, SOURCES.md.
+- `config/` hand-maintained or generated small lists: `pill_classes.csv`, split lists.
+  (`medicines.csv` is from the abandoned medicine-box plan.)
+- `data/` is git-ignored (some sources forbid redistribution). Images go under
+  `data/vision/`, tracked by DVC, never by git. RAG corpus also versioned with DVC.
+- `docs/` plans and reports: ROADMAP.md (progress), STATUS.md, DECISIONS.md, SOURCES.md,
+  DATASET_C3PI.md, NIGHT_REPORT.md.
 - Secrets in `.env` only (git-ignored); `.env.example` is the template.
 
 ## Solo scope
-- 10-15 medicines, 30-50 photos each (angles, lights, backgrounds; 2-3 boxes together in a
-  third; some from the laptop webcam; ~30 photos with no medicine).
+- 100-200 pill classes from C3PI, no own photography or annotation by hand.
 - Simple tool calling first, MCP last. No TrOCR, no reranker, no synergy page unless time remains.
 
 ## Known issues inherited from SynergyRx
@@ -73,3 +104,5 @@ Remote: https://github.com/melekbouabid/tujia-.git
 - Keep tests passing (`python -m pytest tests/unit`, backend tests in `backend/tests`),
   `ruff` and `mypy` clean. `make` is not installed on the dev machine (Windows 11).
 - Update the checkboxes in docs/ROADMAP.md when a step is done.
+- The root `.venv` was created on another machine and is broken; `.venv-dev` (Python 3.12)
+  is the working pipeline venv.
