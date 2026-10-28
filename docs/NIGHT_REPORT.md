@@ -23,7 +23,7 @@ images 4,8 + ~0,1 de fichiers abandonnés ; venv vision ~0,7).
 | 2. Exploration C3PI | fait | voir journal du README |
 | 3. Sous-ensemble d'entraînement | fait (DVC sans remote) | voir journal du README |
 | 4. Principes actifs et interactions | fait | voir journal du README |
-| 5. Infrastructure | à faire | |
+| 5. Infrastructure | fait | voir journal du README |
 | 6. Pipeline vision | à faire | |
 | 7. CI | à faire | |
 
@@ -80,6 +80,17 @@ images 4,8 + ~0,1 de fichiers abandonnés ; venv vision ~0,7).
   DDInter désactivé car deux tests existants l'exigent (je ne les ai pas modifiés, D35).
 - Doc : `docs/INTERACTIONS.md`. 5 nouveaux tests ; 279 tests du pipeline passent.
 
+### Tâche 5 : infrastructure (fait)
+- Docker tournait : `docker compose up -d --build` fonctionne. PostgreSQL 16 + pgvector 0.8.7
+  (base `tujya`) et MLflow 3.17.2 (store dans la base `mlflow`, artefacts dans le volume
+  `mlartifacts`) sur http://localhost:5000.
+- Schéma SQLAlchemy `backend/app/pharma.py` (sources, pills, ingredients, pill_ingredients,
+  interactions ; paire stockée une seule fois, contrainte a < b), base séparée de `app.db`.
+- Chargeur `python -m app.pharma_loader` : rechargement complet en une transaction.
+  Dans PostgreSQL : 150 comprimés, 1 716 ingrédients, 161 liens, 40 508 interactions.
+- 3 tests ajoutés (SQLite) ; 37 tests backend passent. Ajout de `psycopg[binary]`.
+- Doc : `docs/INFRA.md`. Backend et frontend ne sont pas encore dans le compose.
+
 ## Problèmes rencontrés
 - pandas 3.1.0 incompatible avec l'étape `build` du pipeline (D26).
 - `.venv` racine cassé (D27).
@@ -97,4 +108,4 @@ images 4,8 + ~0,1 de fichiers abandonnés ; venv vision ~0,7).
   ne l'ai pas changée ; à corriger avec `git config user.name/user.email` si souhaité.
 
 ## Prochaines étapes
-- Tâche 5 : démarrer docker compose (PostgreSQL + pgvector, MLflow), charger les tables.
+- Tâche 6 : auto-étiquetage, entraînement identification et détection, MLflow, ONNX.
