@@ -12,7 +12,8 @@ après chaque tâche pour pouvoir reprendre le travail si la session s'arrête.
 - Le `.venv` racine vient d'une autre machine et ne démarre pas : laissé intact, nouveau `.venv-dev`.
 
 ## Budget de téléchargement
-Utilisé à la fin de la tâche 2 : ~0,7 Go (échantillon 0,52 Go, XML 0,13 Go, DDInter 0,02 Go).
+Utilisé à la fin de la tâche 3 : ~6,3 Go (échantillon 0,52 ; XML 0,13 ; DDInter 0,02 ;
+images 4,8 + ~0,1 de fichiers abandonnés ; venv vision ~0,7).
 
 ## Avancement
 
@@ -20,7 +21,7 @@ Utilisé à la fin de la tâche 2 : ~0,7 Go (échantillon 0,52 Go, XML 0,13 Go, 
 |---|---|---|
 | 1. README et règles du projet | fait | voir journal du README |
 | 2. Exploration C3PI | fait | voir journal du README |
-| 3. Sous-ensemble d'entraînement | à faire | |
+| 3. Sous-ensemble d'entraînement | fait (DVC sans remote) | voir journal du README |
 | 4. Principes actifs et interactions | à faire | |
 | 5. Infrastructure | à faire | |
 | 6. Pipeline vision | à faire | |
@@ -51,6 +52,18 @@ Utilisé à la fin de la tâche 2 : ~0,7 Go (échantillon 0,52 Go, XML 0,13 Go, 
 - Pas de RxCUI dans les métadonnées : passage par RxNav pour les principes actifs.
 - Documentation : `docs/DATASET_C3PI.md`.
 
+### Tâche 3 : sous-ensemble d'entraînement (fait, DVC local)
+- 150 classes, 24 à 30 photos consumer chacune (moyenne 27), + 1 image de référence RxNav
+  par NDC : 4 206 fichiers, 4,8 Go, tous vérifiés par SHA-1, 0 échec.
+- Les appareils Canon G10 et Nikon S3000 sont exclus (fichiers de ~4,5 Mo) : sans cela,
+  200 classes auraient pesé 17,8 Go, impossible avec le débit de la nuit (D32).
+- Split par photo 70/15/15 stratifié par classe (3 006 / 600 / 600), liste dans
+  `config/splits/selected_images.csv` (versionnée par git, D33).
+- `config/pill_classes.csv` : class_id, NDC9, liste des NDC11, nom, nom générique, labeler,
+  empreinte, couleur, forme, nombres d'images, et (tâche 4) RxCUI et principes actifs.
+- DVC initialisé ; `data/vision/c3pi/images` et `metadata` suivis (cache local). Aucun
+  remote configuré : à choisir (Google Drive, S3, disque externe) puis `dvc push`.
+
 ## Problèmes rencontrés
 - pandas 3.1.0 incompatible avec l'étape `build` du pipeline (D26).
 - `.venv` racine cassé (D27).
@@ -62,6 +75,9 @@ Utilisé à la fin de la tâche 2 : ~0,7 Go (échantillon 0,52 Go, XML 0,13 Go, 
 ## Décisions à relire
 - D26 (plafond pandas), D27 (`.venv-dev`), D28 (langue des docs) dans docs/DECISIONS.md.
 - D29 à D31 : métadonnées XML, classe = NDC9 + part, types d'images utilisés.
+- D32 (150 classes, deux appareils exclus), D33 (split et emplacement des listes).
+- L'identité git est « Votre Nom <vous@example.com> » (déjà dans le commit initial) : je
+  ne l'ai pas changée ; à corriger avec `git config user.name/user.email` si souhaité.
 
 ## Prochaines étapes
-- Tâche 3 : finir le téléchargement des 4 206 images sélectionnées, DVC.
+- Tâche 4 : committer le mapping RxNav et les tables DDInter (déjà calculés).

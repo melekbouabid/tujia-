@@ -106,3 +106,6 @@ Remote: https://github.com/melekbouabid/tujia-.git
 - Update the checkboxes in docs/ROADMAP.md when a step is done.
 - The root `.venv` was created on another machine and is broken; `.venv-dev` (Python 3.12)
   is the working pipeline venv.
+- Line endings are mixed in this repo (Python and some docs LF; README, DECISIONS,
+  config.yaml, pyproject.toml, .gitignore CRLF). Keep each file's existing style: `sed -i`
+  and Python `write_text` on Windows silently change it (check with `git ls-files --eol`).
