@@ -63,3 +63,40 @@ docs/DECISIONS.md.
      puis `gh api -X DELETE user/packages/container/tujya-backend` et
      `gh api -X DELETE user/packages/container/tujya-frontend` (détails dans docs/CD.md).
   Les paquets étaient privés et ne contiennent que du code (ni données, ni modèles, ni secret).
+
+## Tâche 3 : remote DVC (fait)
+- Remote par défaut `localstore` = `C:\Users\msi\dvc-storage\tujya` (hors du dépôt, D71) :
+  `dvc remote add -d localstore C:\Users\msi\dvc-storage\tujya`. DVC 3.67.1, installé dans
+  `vision/.venv`.
+- Note honnête : `.dvc/config` est parti dans le commit `0621af9` (celui de la CD), parce
+  que j'avais fait `git add -A` juste après `dvc remote add`. Le contenu est le bon et il est
+  poussé ; je n'ai pas réécrit l'historique.
+- `dvc push` : **15 306 fichiers**, **5,0 Go**, 1 min 40 ; `dvc status -c` : « Cache and
+  remote 'localstore' are in sync. » Contenu : images et métadonnées C3PI, `data/tujya`
+  (tables DDInter), `data/rag/raw`, `data/rag/interim`, `data/rag/manifest.json`, et les
+  sorties des étapes `prepare` (étiquettes, jeux YOLO) et `rag_corpus` (chunks).
+- **Preuve** : clone neuf depuis GitHub (`0621af9`) dans un dossier temporaire, `dvc pull` :
+  « 15306 files fetched and 15306 files added » en 10 min 54 ; `dvc status` dans le clone :
+  « Data and pipelines are up to date. » ; comparaison SHA-256 fichier par fichier avec le
+  dépôt d'origine :
+
+| Dossier | Original | Clone | Manquants | Différents |
+|---|---:|---:|---:|---:|
+| data/vision/c3pi/images | 4 206 | 4 206 | 0 | 0 |
+| data/vision/c3pi/metadata | 117 | 117 | 0 | 0 |
+| data/vision/c3pi/labels | 1 | 1 | 0 | 0 |
+| data/vision/datasets | 10 731 | 10 726 | 5 | 0 |
+| data/tujya | 3 | 3 | 0 | 0 |
+| data/rag/raw | 246 | 246 | 0 | 0 |
+| data/rag/interim | 4 | 4 | 0 | 0 |
+| data/rag/manifest.json | 1 | 1 | 0 | 0 |
+| data/rag/corpus | 2 | 2 | 0 | 0 |
+
+  Les 5 fichiers manquants sont les caches d'Ultralytics (`classify/train.cache`,
+  `classify/val.cache`, `detect/labels/{train,val,test}.cache`), exclus volontairement par
+  `.dvcignore` et recréés à la demande. Tous les fichiers suivis (15 306) sont identiques.
+  Clone temporaire supprimé ensuite.
+- Documentation : README (« Données (DVC) ») et docs/INFRA.md (« DVC remote ») avec les
+  commandes pour passer à Google Drive ou S3 (non configurés). Case « DVC » cochée.
+- À savoir : le remote est sur le même disque que le dépôt : ce n'est pas une sauvegarde.
+  Copiez `C:\Users\msi\dvc-storage\tujya` sur un disque externe.
