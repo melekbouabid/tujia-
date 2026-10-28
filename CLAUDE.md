@@ -71,12 +71,13 @@ Remote: https://github.com/melekbouabid/tujia-.git
 ## Tech stack
 - Vision: YOLOv8/v11 detection + YOLO classification (transfer learning) -> ONNX Runtime.
   Own venv in `vision/.venv` (git-ignored).
-- MLOps: MLflow, DVC, Docker Compose (postgres + pgvector, mlflow; later backend, frontend,
-  ollama), GitHub Actions.
+- MLOps: MLflow, DVC, Docker Compose (postgres + pgvector, mlflow, backend, frontend; later
+  ollama), GitHub Actions CI and CD (images on ghcr.io). Run: `docker compose up -d --build`.
 - LLM: LangGraph + LangChain, Ollama local LLM (Mistral, Llama or Qwen), bge-m3 embeddings.
 - Retrieval: PostgreSQL + pgvector + BM25 hybrid search. Benchmark: RAGAS + Recall@k / MRR.
 - Backend: FastAPI (`backend/`, already has accounts, sessions, admin, catalog).
-- Frontend: React + Vite + TypeScript (`frontend/`, branded Tujya; predictions are still mock).
+- Frontend: React + Vite + TypeScript (`frontend/`, branded Tujya; Scanner page on the real API).
+- API reference: docs/API.md; models served from `models/` (`python -m tujya_vision.publish`).
 
 ## Folder conventions
 - `backend/` FastAPI app and its tests; `frontend/` React app; `vision/` training and export.
