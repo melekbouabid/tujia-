@@ -14,7 +14,7 @@ le détail est aussi dans le « Journal de progression » du README.
 |---|---|
 | 1. Swagger sur `/docs` | fait |
 | 2. API de scan | fait |
-| 3. API d'interactions | à faire |
+| 3. API d'interactions | fait |
 | 4. Page Scanner | à faire |
 | 5. Docker Compose complet | à faire |
 | 6. CD (ghcr.io) | à faire |
@@ -49,6 +49,16 @@ le détail est aussi dans le « Journal de progression » du README.
 - Tests : 12 tests avec de petits modèles ONNX factices construits dans le test (aucun poids
   réel en CI). Nouvelle colonne `generic_name` : le chargeur recrée ses tables (D48) ;
   PostgreSQL rechargé (mêmes chiffres). Doc : `docs/API.md`.
+
+### Tâche 3 : API d'interactions (fait)
+- `POST /api/interactions` : 2 à 10 éléments (class_id de comprimés et/ou noms de principes
+  actifs). Chaque paire : interactions DDInter (sévérité, description, source avec URL et
+  citation), sévérité la plus haute, principes actifs présents dans les deux. Sans résultat :
+  « Aucune interaction connue dans cette base de données. » ; élément inconnu ou comprimé sans
+  principe actif connu : « aucune vérification n'est possible ». Jamais « sûr ».
+- `GET /api/pills?q=&limit=` : recherche dans les 150 classes pour la confirmation manuelle.
+- Tables PostgreSQL du chargeur ; 16 tests sur SQLite ; 69 tests backend au total.
+- Case « Backend FastAPI asynchrone, schémas Pydantic, Swagger sur `/docs` » cochée.
 
 ## Problèmes rencontrés
 - Tâche 2 : la première évaluation sur la validation était 30 fois trop lente (plus de 25 min) :
