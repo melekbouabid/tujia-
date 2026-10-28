@@ -22,7 +22,7 @@ images 4,8 + ~0,1 de fichiers abandonnés ; venv vision ~0,7).
 | 1. README et règles du projet | fait | voir journal du README |
 | 2. Exploration C3PI | fait | voir journal du README |
 | 3. Sous-ensemble d'entraînement | fait (DVC sans remote) | voir journal du README |
-| 4. Principes actifs et interactions | à faire | |
+| 4. Principes actifs et interactions | fait | voir journal du README |
 | 5. Infrastructure | à faire | |
 | 6. Pipeline vision | à faire | |
 | 7. CI | à faire | |
@@ -64,6 +64,22 @@ images 4,8 + ~0,1 de fichiers abandonnés ; venv vision ~0,7).
 - DVC initialisé ; `data/vision/c3pi/images` et `metadata` suivis (cache local). Aucun
   remote configuré : à choisir (Google Drive, S3, disque externe) puis `dvc push`.
 
+### Tâche 4 : principes actifs et interactions (fait)
+- RxNav : NDC11 -> RxCUI (`ndcstatus`, y compris NDC obsolètes) -> ingrédients de base
+  (`historystatus`). 149/150 classes associées, 82 principes actifs, 11 associations
+  (ex. losartan + hydrochlorothiazide). Non associée : la multivitamine « Formula B Plus ».
+  Les dosages sont présents dans la réponse RxNav mais ne sont jamais stockés.
+- DDInter : le connecteur existant ne prenait que 8 des 14 fichiers ATC (il manquait C
+  cardiovasculaire et N système nerveux) ; l'étape Tujya prend les 14 : 234 981 lignes.
+- 3 alias RxNorm -> DDInter (valproate, vitamines B6 et B12) : 82/82 trouvés.
+- Tables : `data/tujya/interactions_between_classes.csv` (2 350 paires : 125 Major,
+  826 Moderate, 72 Minor, 1 327 Unknown) et `interactions_with_any_drug.csv` (40 508).
+- La colonne `description` ne fait que reformuler DDInter (les fichiers en masse n'ont pas
+  de texte de mécanisme ; pas de scraping) : les explications viendront du RAG openFDA.
+- Activation : `python -m synergyrx_data.tujya ddinter` ; le `config.yaml` partagé garde
+  DDInter désactivé car deux tests existants l'exigent (je ne les ai pas modifiés, D35).
+- Doc : `docs/INTERACTIONS.md`. 5 nouveaux tests ; 279 tests du pipeline passent.
+
 ## Problèmes rencontrés
 - pandas 3.1.0 incompatible avec l'étape `build` du pipeline (D26).
 - `.venv` racine cassé (D27).
@@ -76,8 +92,9 @@ images 4,8 + ~0,1 de fichiers abandonnés ; venv vision ~0,7).
 - D26 (plafond pandas), D27 (`.venv-dev`), D28 (langue des docs) dans docs/DECISIONS.md.
 - D29 à D31 : métadonnées XML, classe = NDC9 + part, types d'images utilisés.
 - D32 (150 classes, deux appareils exclus), D33 (split et emplacement des listes).
+- D34 à D37 : RxNav, activation de DDInter par une étape Tujya, description, email de contact.
 - L'identité git est « Votre Nom <vous@example.com> » (déjà dans le commit initial) : je
   ne l'ai pas changée ; à corriger avec `git config user.name/user.email` si souhaité.
 
 ## Prochaines étapes
-- Tâche 4 : committer le mapping RxNav et les tables DDInter (déjà calculés).
+- Tâche 5 : démarrer docker compose (PostgreSQL + pgvector, MLflow), charger les tables.
