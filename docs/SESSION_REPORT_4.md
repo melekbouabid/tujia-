@@ -1,4 +1,4 @@
-# Rapport de la session 4 (2026-10-28, nuit) : usage local, CD, DVC, démo, rapports, bonus
+# Rapport de la session 4 (nuit du 2026-10-28 au 29) : usage local, CD, DVC, démo, rapports, bonus
 
 Travail autonome, tâches 1 à 7 dans l'ordre. Le détail de chaque tâche est aussi dans le
 « Journal de progression » du README ; les décisions sont D69 et suivantes dans
@@ -9,6 +9,38 @@ docs/DECISIONS.md.
 - 99 tests backend, 287 tests pipeline, 14 tests vision.
 - Pile Docker en marche, mais tous les ports publiés sur `0.0.0.0` et `[::]` (accessibles
   depuis le réseau local).
+
+## Résumé : ce qui est fait
+
+Les 7 tâches sont traitées, commitées et poussées (aucun force push, historique intact) ;
+CI et CD vertes sur le dernier code testé.
+
+| Tâche | État | En bref |
+|---|---|---|
+| 1. Usage strictement local | fait | tous les ports sur `127.0.0.1` (vérifié avec `netstat`), Vite et MCP HTTP en local seulement, règle permanente dans CLAUDE.md |
+| 2. CD sans publication | fait, sauf suppression des paquets | images construites et testées sans envoi ; envoi seulement en option manuelle ; **suppression des 2 paquets ghcr.io à faire par vous** |
+| 3. Remote DVC | fait | `C:\Users\msi\dvc-storage\tujya`, 15 306 fichiers (5,0 Go) au départ ; clone neuf + `dvc pull` identique au SHA-256 près ; case DVC cochée |
+| 4. Démo et questions du jury | fait | docs/DEMO.md (15 étapes + bonus, préparation, plan B), docs/QUESTIONS_JURY.md (26 questions) ; démo rejouée en entier ; un défaut trouvé et corrigé (D72) |
+| 5. Rapports techniques | fait | 2 rapports en Markdown + PDF (11 et 8 pages), schémas Mermaid, captures ; case « Rapport technique » cochée |
+| 6. Bonus toxicité | fait | Tox21, LightGBM, split par scaffold, ROC-AUC test moyen 0,725 ; outil agent + MCP + API + page web ; défaut de sécurité du LLM trouvé et corrigé (D74) |
+| 7. Bonus synergie | étudié, pas d'outil | règle fixée d'avance non atteinte (−7,3 % de RMSE au lieu de −10 %) : résultat documenté, aucun outil |
+
+Chiffres principaux de la session :
+- Tests : backend 99 -> **113** ; pipeline 287 et vision 14 inchangés ; tous verts en local
+  et dans la CI (run 40784444929 vert, 4 jobs), CD 40784649327 verte (images construites et
+  testées, `publish` ignoré).
+- DVC : remote local, 15 306 + 10 fichiers (Tox21, tables `data/parquet`), synchronisé.
+- MLflow : 2 nouvelles expériences, `tujya-tox` (modèle `tujya-tox21` v2) et
+  `tujya-synergy` (aucun modèle enregistré).
+
+## Où trouver quoi
+- Script de démo : [docs/DEMO.md](DEMO.md) ; questions du jury : [docs/QUESTIONS_JURY.md](QUESTIONS_JURY.md).
+- Rapports : [docs/rapports/rapport_module1_vision_mlops.pdf](rapports/rapport_module1_vision_mlops.pdf)
+  et [docs/rapports/rapport_module2_ai_engineering.pdf](rapports/rapport_module2_ai_engineering.pdf)
+  (sources `.md` à côté ; regénérer : `cd frontend && node scripts/build-reports.mjs`).
+- Bonus : [docs/TOXICITY.md](TOXICITY.md), [docs/SYNERGY.md](SYNERGY.md).
+- Infra locale et DVC : [docs/INFRA.md](INFRA.md) ; CD : [docs/CD.md](CD.md).
+- Nouvelles captures : `docs/screenshots/12` à `17` (MLflow, page Toxicity).
 
 ## Tâche 1 : usage strictement local (fait)
 - Règle permanente ajoutée dans CLAUDE.md : le projet tourne uniquement sur ce PC (pas de
@@ -241,3 +273,55 @@ docs/DECISIONS.md.
   `clearly_better_than_mean_baseline = False`, aucun modèle enregistré.
 - `data/parquet` (tables du pipeline SynergyRx) maintenant suivi par DVC et poussé (38 Mo).
 - Documentation : docs/SYNERGY.md.
+
+## Ce qui n'a pas marché ou reste limité
+- **Paquets ghcr.io non supprimés** : le jeton `gh` n'a pas les droits `delete:packages`
+  (403) ; je n'ai pas modifié votre connexion. Et le commit de la tâche 1 a encore déclenché
+  l'ancienne CD : `sha-2222e1b` est la dernière publication. Marche à suivre ci-dessous.
+- `.dvc/config` est entré dans le commit de la CD (`0621af9`) au lieu d'un commit à part
+  (`git add -A` trop large) ; contenu correct, historique non réécrit.
+- Régression de la tâche 1 trouvée pendant la répétition de la démo : `localhost` -> IPv6
+  `::1` -> 65 à 100 s par connexion PostgreSQL ; corrigé (adresses `127.0.0.1`, D72).
+- Tox21 : premier entraînement planté après l'enregistrement (emoji de MLflow sur la console
+  Windows) : version 1 gardée et marquée FAILED, version 2 servie.
+- Le LLM de 3B lisait mal les probabilités de toxicité et a écrit « pas identifiée comme
+  toxique » : corrigé par une phrase générée par le code et une règle « jamais non toxique »
+  (D74). Il ne faut donc pas montrer de réponse LLM libre sur la toxicité.
+- Synergie : modèle meilleur que la moyenne mais sous la règle (−7,3 % au lieu de −10 %) :
+  pas d'outil.
+- Toujours limité : vraie webcam jamais testée (caméra factice seulement) ; première réponse
+  du chat après un démarrage très lente (84 s mesurées) ; Swagger UI a besoin d'Internet
+  (CDN) ; avertissements GitHub sur Node 20 (non bloquants) ; licence Tox21 non explicite.
+- Aucune tâche abandonnée après 3 essais.
+
+## Décisions à relire (docs/DECISIONS.md)
+- **D69** : usage strictement local (remplace « déploiement sur un serveur »).
+- **D70** : CD sans publication ; envoi sur ghcr.io seulement en option manuelle.
+- **D71** : remote DVC local ; ce n'est **pas une sauvegarde** (même disque).
+- **D72** : `127.0.0.1` au lieu de `localhost` pour les outils côté PC.
+- **D73** : Tox21 sans licence explicite, traité comme donnée publique de recherche (à
+  vérifier si possible avant la soutenance).
+- **D74** : phrases de toxicité écrites par le code ; seuil 0,5 seulement comme aide à la
+  lecture ; domaine d'applicabilité 0,3 heuristique.
+- **D75** : source unique DrugComb, cible ZIP, split par médicament, règle des 10 %.
+
+## Checklist : à faire vous-même avant la soutenance
+1. [ ] **Supprimer les paquets ghcr.io** `tujya-backend` et `tujya-frontend` : github.com ->
+   votre profil -> onglet **Packages** -> le paquet -> **Package settings** -> **Delete this
+   package** (ou les commandes `gh` de docs/CD.md, puis retirer les droits ajoutés).
+2. [ ] **Changer le mot de passe admin** (`admin@gmail.com` / `admin`) dans l'application
+   (Admin -> My account) ; je n'y ai pas touché.
+3. [ ] **Sauvegarder** `C:\Users\msi\dvc-storage\tujya` sur un disque externe.
+4. [ ] Lire les deux rapports PDF ; ajouter ce que demande le professeur (page de garde,
+   nom, établissement, date, éventuel format imposé), puis `node scripts/build-reports.mjs`.
+5. [ ] Répéter docs/DEMO.md chronomètre en main ; le jour J : `docker compose up -d --build`,
+   **préchauffer le LLM** (étape de préparation), vérifier Internet (Swagger).
+6. [ ] Essayer la **vraie webcam** avec de vrais comprimés de la liste des 150 classes ;
+   sinon le dire et montrer les photos de démo.
+7. [ ] Enregistrer une **vidéo de secours** de la démo (case encore ouverte dans la feuille
+   de route).
+8. [ ] Relire D69 à D75 et la question 26 (bonus) des questions du jury.
+9. [ ] Vérifier que `models/` contient le classifieur, le détecteur et `tox21/` (sinon
+   `python -m tujya_vision.publish` et `python scripts/train_tox21.py publish`).
+10. [ ] Après la soutenance : cocher « Soutenance pratique » et « Démonstration » dans le
+    README.
