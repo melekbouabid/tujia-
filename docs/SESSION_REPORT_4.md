@@ -157,3 +157,61 @@ docs/DECISIONS.md.
   (images visibles, légendes, tableaux, pied de page numéroté).
 - Au passage : docs/RAG.md (remote DVC, mode par défaut dense) et docs/AGENT.md
   (`LLM_NUM_CTX` 4096, 450 jetons) n'étaient plus à jour, corrigés.
+
+## Tâche 6 : bonus, outil de toxicité (fait)
+- **Données** : Tox21, copie MoleculeNet (`tox21.csv.gz` de DeepChem, 7 831 molécules, 12
+  tests in vitro) dans `data/tox21/` avec `SOURCE.json` (URL, SHA-256), `dvc add` + `dvc push`.
+  **Licence : aucune licence explicite trouvée** (ni pour le fichier MoleculeNet, ni sur la
+  page du challenge Tox21) ; données publiques produites par des agences fédérales
+  américaines ; traitées comme données de recherche publiques, citées, jamais commitées
+  (D73). À vérifier par vous si le jury pose la question.
+- **Modèle** (`backend/scripts/train_tox21.py`, `backend/app/toxicity.py`) : plus grand
+  fragment, empreintes Morgan RDKit rayon 2 / 2 048 bits, **split par scaffold** 80/10/10
+  (6 258 / 782 / 783 molécules, 2 285 scaffolds), un LightGBM par test avec arrêt précoce sur
+  la validation. 77 s sur CPU.
+
+| Test Tox21 | ROC-AUC test | | Test Tox21 | ROC-AUC test |
+|---|---:|---|---|---:|
+| NR-AR | 0,694 | | NR-PPAR-gamma | 0,658 |
+| NR-AR-LBD | 0,813 | | SR-ARE | 0,647 |
+| NR-AhR | 0,822 | | SR-ATAD5 | 0,720 |
+| NR-Aromatase | 0,716 | | SR-HSE | 0,709 |
+| NR-ER | 0,672 | | SR-MMP | 0,772 |
+| NR-ER-LBD | 0,721 | | SR-p53 | 0,759 |
+
+  **Moyenne test 0,725**, validation 0,766 ; ROC-AUC d'entraînement proche de 1 (fort
+  surapprentissage) ; peu d'actifs par test (20 à 116), donc chaque chiffre est incertain.
+  Aucune comparaison avec la littérature sur ce même split : je n'en revendique aucune.
+- **MLflow** : expérience `tujya-tox`, run `6d3e6790…`, modèle **`tujya-tox21` v2** (pyfunc)
+  publié dans `models/tox21/` (git-ignoré). La v1 est un premier run identique : le script a
+  planté *après* l'enregistrement (emoji d'un message de MLflow sur la console Windows) ; je
+  l'ai gardée, run marqué FAILED avec une note, plutôt que de la supprimer.
+- **Structures** des 82 principes actifs depuis PubChem (`config/ingredient_smiles.csv`,
+  domaine public), 82/82 ; 3 alias (valproate, vitamine B12, vitamine B6 : PubChem renvoyait
+  un ion ou une coenzyme). 49 des 82 ont une empreinte identique à une molécule
+  d'entraînement ; 4 sont « loin des molécules d'entraînement » (similarité < 0,3) :
+  citalopram, mycophénolate mofétil, tiagabine, vitamine B12.
+- **Outil** `predict_toxicity(molecules)` (1 ou 2 noms ou SMILES) : agent (choisi par le LLM
+  ou ajouté par règle sur une question de toxicité), **serveur MCP (5e outil)**,
+  `POST /api/toxicity`, page web **Toxicity** (une carte par molécule, 12 tests, ROC-AUC de
+  chaque test, avertissement et formulation toujours visibles). Toujours « prédiction d'un
+  modèle sur des tests in vitro, pas une évaluation clinique » ; jamais rien sur le mélange.
+- **Problème trouvé en essayant le vrai agent, corrigé (D74)** : qwen2.5:3b lisait mal les
+  probabilités : « La warfarine n'est pas identifiée comme toxique… toutes les probabilités
+  sont inférieures à 0,5 » alors que SR-MMP = 0,83 ; puis « Fluconazole est classé comme
+  toxique [3] » en citant la prédiction de la warfarine. Correction : quand l'outil a tourné,
+  toute phrase du LLM sur la prédiction est retenue pendant le flux et remplacée par une
+  **phrase fixe écrite par le code** à partir du résultat, par exemple : « Modèle Tox21 pour
+  warfarin (prédiction d'un modèle sur des tests in vitro, pas une évaluation clinique) :
+  probabilité d'activité d'au moins 0,5 dans 1 des 12 tests : SR-MMP (0,83) [1]. » ; et
+  nouvelle règle de sécurité 6 pour toutes les réponses : jamais « non toxique », « aucune
+  toxicité notable », « no significant toxicity ».
+- **Vérifié sur les conteneurs** : `/api/toxicity` (warfarine + fluconazole, nom français
+  résolu) ; page Toxicity par Playwright (2 molécules en 1,2 s, 12 tests chacune, formulation,
+  avertissement, note sur le mélange, aucun mot interdit ; citalopram marqué hors domaine) ;
+  chat : 3 questions (warfarine, fluconazole, les deux) avec réponses correctes en 3 à 5 s, et
+  une question d'interaction qui n'appelle pas l'outil.
+- **Tests** : backend 100 -> **113** (`test_toxicity.py` : 12 tests avec des prédicteurs
+  factices et un petit vrai modèle LightGBM ; `test_safety.py` : règle « non toxique » et
+  retenue en flux ; `test_mcp.py` : 5 outils listés). Image backend : RDKit, LightGBM et
+  `libgomp1`. Captures 16 (page) et 17 (MLflow).
