@@ -64,3 +64,20 @@ et suivantes dans docs/DECISIONS.md.
 - Limite : d'autres sections des notices citent des quantités (1 010 chunks contiennent
   « <nombre> mg », par exemple les doses des études) ; le nœud de sécurité de l'agent retire
   toute phrase avec une dose.
+
+## Tâche 2 : récupération (fait)
+- Machine : 31,7 Go de RAM, i7-13620H (16 threads), RTX 2050 4 Go. Modèle d'embeddings :
+  **bge-m3** (multilingue, 1 024 dimensions) servi par le même conteneur Ollama (D59) :
+  0,7 Go de VRAM, tient avec qwen2.5:3b (les deux à 100 % GPU), aucun PyTorch dans le backend.
+  Une phrase française et sa traduction anglaise : cosinus 0,87 ; phrase sans rapport : 0,53.
+- Stockage : table `rag_chunks` (PostgreSQL + pgvector, `vector(1024)`), métadonnées en
+  colonnes, listes de principes actifs en `text[]` ; table `rag_index_meta` (modèle, dimension,
+  date d'indexation).
+- Indexation idempotente : `python -m app.rag.index` ; 8 661 chunks en **364 s** ; deuxième
+  passage : 0 recalculé, 0,1 s. Un chunk modifié est recalculé, un chunk disparu supprimé, un
+  autre modèle reconstruit la table.
+- Recherche : BM25 (en mémoire, ~6 ms), dense (cosinus exact en SQL, 130-190 ms, surtout
+  l'embedding de la question), hybride RRF k = 60 (~170 ms). Filtres : principe actif (sujet
+  ou cité), type de document, section, articles rétractés exclus par défaut.
+- Tests : `test_rag.py` (SQLite, embeddings factices) et `test_rag_pgvector.py` (PostgreSQL ;
+  la CI a maintenant un service `pgvector/pgvector:pg16` dans le job backend).
