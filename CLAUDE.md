@@ -17,6 +17,9 @@ Remote: https://github.com/melekbouabid/tujia-.git
   docs/ROADMAP.md, then commit with a clear message and push. Never force push, never
   rewrite history.
 - Never commit anything under `data/` (DVC only), never touch `.env` or `backend/app.db`.
+- **The project runs only on this PC.** Never deploy it publicly, never open a tunnel, never
+  publish Docker images of the app, never bind a service to 0.0.0.0 on the host. The GitHub
+  repository stays public (code and docs only).
 
 ## Graded in two modules
 
