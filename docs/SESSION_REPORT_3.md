@@ -32,3 +32,35 @@ et suivantes dans docs/DECISIONS.md.
 
   qwen2.5:3b est le seul qui tient entièrement dans les 4 Go, le plus rapide, avec un bon
   français et l'appel d'outils dans Ollama.
+
+## Tâche 1 : corpus documentaire (fait)
+- **Notices openFDA** : connecteur `openfda_label` (`src/synergyrx_data/connectors/openfda.py`)
+  dans le style du pipeline (PoliteClient, 3 requêtes/s, cache HTTP, manifeste avec SHA-256,
+  colonnes de provenance, schéma Pydantic). Une notice par principe actif, choisie par une
+  règle fixe (D60) : notice qui concerne bien le principe actif, mono-principe actif avant
+  association, sur ordonnance avant OTC, le plus de sections utiles, la plus récente. Les 25
+  candidates sont gardées avec la notice pour pouvoir vérifier le choix.
+  Résultat : **82/82** (81 sur ordonnance, 1 OTC : fexofénadine), 975 sections, dates
+  2021-09-30 à 2026-09-11.
+- **Jamais de posologie** : `dosage_and_administration`, `dosage_forms_and_strengths`,
+  `overdosage`, `how_supplied`, emballage, pharmacocinétique, études cliniques sont retirés
+  avant l'écriture du fichier brut, refusés par le schéma et par le découpage.
+- **PubMed** : le connecteur existant a un nouveau mode `ingredients` (une requête par
+  principe actif : interactions ou effets indésirables, résumés en anglais depuis 2000, tri
+  par pertinence, **20 au plus**, D61). 1 570 articles distincts (17 à 20 par principe actif),
+  dont 4 rétractés (signalés, exclus à la recherche par défaut).
+- **DDInter** : les 2 350 paires entre principes actifs des classes, une par chunk (D62).
+- **Découpage** : notices par section (1 500 caractères au plus, une phrase de
+  chevauchement), résumés par paragraphe (BACKGROUND, RESULTS...), DDInter une ligne par
+  paire. Métadonnées : type, principe(s) actif(s), principes actifs cités, section, titre,
+  source, URL (DailyMed, PubMed, DDInter), date, version, licence, type d'article, rétraction,
+  langue, date de récupération.
+- **Total : 8 661 chunks pour 4 002 documents** (notices 2 895, résumés 3 416, DDInter 2 350).
+- **DVC** : `data/rag/raw`, `data/rag/interim`, `data/rag/manifest.json` par `dvc add` ;
+  chunks par l'étape `rag_corpus` de `dvc.yaml` (`dvc repro rag_corpus`). Toujours pas de
+  remote DVC (cache local).
+- Documentation : `docs/RAG.md`. Tests : 8 (`tests/unit/test_tujya_rag.py`, respx) ; 287
+  tests du pipeline passent, ruff et mypy propres.
+- Limite : d'autres sections des notices citent des quantités (1 010 chunks contiennent
+  « <nombre> mg », par exemple les doses des études) ; le nœud de sécurité de l'agent retire
+  toute phrase avec une dose.
