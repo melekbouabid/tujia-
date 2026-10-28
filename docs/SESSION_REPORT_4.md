@@ -134,3 +134,26 @@ docs/DECISIONS.md.
   caméra factice de Chromium a été testée), et le préchauffage du LLM avant la soutenance.
 - Les cases « Soutenance pratique » et « Démonstration » ne sont pas cochées : elles le
   seront après la soutenance.
+
+## Tâche 5 : rapports techniques (fait)
+- `docs/rapports/rapport_module1_vision_mlops.md` et `.pdf` (11 pages, 9 figures) :
+  contexte, données C3PI (sous-ensemble, étiquetage automatique et audit), détecteur,
+  classifieur, bout en bout, seuil 0,85, ONNX Runtime et API, DVC avec remote, MLflow
+  (tracking et registre), Docker Compose, CI/CD, application web, déploiement strictement
+  local, limites, références.
+- `docs/rapports/rapport_module2_ai_engineering.md` et `.pdf` (8 pages, 6 figures) :
+  corpus et métadonnées, découpage et exclusions de sécurité, récupération (pgvector, BM25,
+  hybride, benchmark), agent LangGraph (outils, nœud de sécurité, citations), MCP, choix du
+  LLM local, benchmark (récupération, génération, RAGAS, citations, sécurité), chat,
+  limites, références.
+- Uniquement des chiffres présents dans docs/ et MLflow (aucun chiffre inventé).
+- Schémas Mermaid (`docs/rapports/diagrams/*.mmd`) rendus en PNG (`docs/rapports/img/`) :
+  architecture, chaîne de vision, graphe de l'agent ; captures de `docs/screenshots/`.
+- PDF : pas de pandoc ni de LaTeX sur ce PC, donc HTML + impression Chromium (Playwright) :
+  `cd frontend && node scripts/build-reports.mjs` (Mermaid et marked chargés depuis jsDelivr
+  à des versions fixées : il faut Internet). Le script échoue si une image ne se charge pas.
+- Vérification : les deux PDF ouverts avec PyMuPDF (environnement temporaire, hors du
+  dépôt) : 11 et 8 pages, 9 et 6 images intégrées ; pages rendues et relues à l'œil
+  (images visibles, légendes, tableaux, pied de page numéroté).
+- Au passage : docs/RAG.md (remote DVC, mode par défaut dense) et docs/AGENT.md
+  (`LLM_NUM_CTX` 4096, 450 jetons) n'étaient plus à jour, corrigés.
