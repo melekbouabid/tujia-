@@ -215,3 +215,29 @@ docs/DECISIONS.md.
   factices et un petit vrai modèle LightGBM ; `test_safety.py` : règle « non toxique » et
   retenue en flux ; `test_mcp.py` : 5 outils listés). Image backend : RDKit, LightGBM et
   `libgomp1`. Captures 16 (page) et 17 (MLflow).
+
+## Tâche 7 : bonus, synergie (étudiée ; pas d'outil, comme prévu par la règle)
+- **Règle écrite avant tout entraînement** (D75) : ajouter `predict_synergy` seulement si,
+  sur un test où des médicaments sont laissés de côté, le RMSE est au moins 10 % sous la
+  baseline « moyenne » et la corrélation de Pearson au moins 0,3.
+- **Dédoublonnage** : une expérience = (paire non ordonnée, lignée) ; 689 081 lignes,
+  379 670 expériences, toutes dans DrugComb ; TDC en est une copie exacte (r = 1,00 sur
+  Loewe et ZIP, 286 674 expériences communes) ; O'Neil diverge (r = 0,415 sur Loewe,
+  22 737 communes). **Source unique : DrugComb.** Cible : **ZIP**. Médicaments avec une
+  structure valide : 323 339 expériences, 287 médicaments, 110 lignées.
+- **Modèle** (`backend/scripts/train_synergy.py`, 46 s) : somme des empreintes Morgan des
+  deux médicaments, 30 composantes principales de l'expression de la lignée, tissu ;
+  15 % des médicaments en test, 10 % en validation ; LightGBM (79 itérations).
+
+| Test (laisser des médicaments de côté) | Moyenne : RMSE | Moyenne par lignée : RMSE (r) | LightGBM : RMSE (r) |
+|---|---:|---:|---:|
+| Tout le test (93 597) | 5,597 | 5,472 (0,215) | **5,189 (0,377)** |
+| Un médicament inconnu (86 135) | 5,582 | 5,448 (0,221) | 5,165 (0,381) |
+| Deux médicaments inconnus (7 462) | 5,777 | 5,734 (0,142) | 5,455 (0,328) |
+
+- **Gain de RMSE : 7,3 %** (< 10 %) ; r = 0,377 (≥ 0,3) : la règle n'est pas atteinte,
+  donc **aucun outil `predict_synergy`** ; je n'ai pas réglé le modèle davantage sur ce test
+  (ce serait ajuster au jeu de test). MLflow `tujya-synergy`, run `77af603c…`, tag
+  `clearly_better_than_mean_baseline = False`, aucun modèle enregistré.
+- `data/parquet` (tables du pipeline SynergyRx) maintenant suivi par DVC et poussé (38 Mo).
+- Documentation : docs/SYNERGY.md.
