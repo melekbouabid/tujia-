@@ -16,7 +16,7 @@ le détail est aussi dans le « Journal de progression » du README.
 | 2. API de scan | fait |
 | 3. API d'interactions | fait |
 | 4. Page Scanner | fait |
-| 5. Docker Compose complet | à faire |
+| 5. Docker Compose complet | fait |
 | 6. CD (ghcr.io) | à faire |
 
 ## Détail par tâche
@@ -74,6 +74,45 @@ le détail est aussi dans le « Journal de progression » du README.
 - Interface en anglais comme le reste du site ; textes de sécurité en français mot pour mot (D53).
 - Preuve : `npm run build` passe ; `frontend/scripts/screenshots.mjs` (Playwright, D54) a fait
   tout le parcours et enregistré 7 captures dans `docs/screenshots/` (voir la fin du rapport).
+
+### Tâche 5 : Docker Compose complet (fait)
+- `docker-compose.yml` : postgres (+ pgvector), mlflow, `pharma-init` (recharge les tables de
+  médicaments puis s'arrête), backend (FastAPI + ONNX Runtime CPU) et frontend (nginx : site
+  React, et transmission de `/api`, `/docs`, `/openapi.json` au backend). Une seule commande :
+  `docker compose up -d --build`. Images sans données ni modèles : `config/`, `data/` et
+  `models/` montés en lecture seule (D55). Comptes dans PostgreSQL (jamais `backend/app.db`).
+- Test de fumée par curl via nginx (port 8080), résultat brut :
+
+```
+== GET /api/health
+{"status":"ok"}  -> 200
+== GET /docs
+  -> 200 text/html; charset=utf-8
+<title>Tujya API - Swagger UI</title>
+== GET /openapi.json
+   Tujya API 0.2.0 18 paths; ['/api/scan', '/api/pills', '/api/interactions']
+== GET /api/docs (old address)
+  -> 307 location=http://localhost:8080/docs
+== GET /api/public/summary
+{"drugs":4081,"cell_lines":112,"synergy_measurements":689081,"abstracts":174}  -> 200
+== POST /api/scan without sign-in
+  -> 401
+== POST /api/auth/login (demo user)
+  -> 200
+== POST /api/scan (C3PI test photo, class 9 fluconazole, 1225299 bytes)
+   image 2560 x 1920 inference_ms 59.4 models {'detect': 1, 'classify': 2}
+   box {'x1': 1109, 'y1': 846, 'x2': 1454, 'y2': 1117} top1 9 FLUCONAZOLE 100MG TABLETS ['fluconazole'] 0.996 needs_confirmation False
+   disclaimer: Information uniquement, consultez un pharmacien ou un médecin.
+== POST /api/interactions (pills 9 + 120)
+   1 paire(s) sur 1 avec une interaction connue dans cette base de données. Major ['c3pi', 'ddinter', 'rxnav']
+== GET /api/demo/images
+   8 photos
+== GET / (web app)
+  -> 200
+```
+
+- Le script Playwright a aussi fait tout le parcours sur les conteneurs
+  (`BASE=http://localhost:8080 node scripts/screenshots.mjs`).
 
 ## Problèmes rencontrés
 - Tâche 2 : la première évaluation sur la validation était 30 fois trop lente (plus de 25 min) :
