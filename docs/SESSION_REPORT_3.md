@@ -81,3 +81,38 @@ et suivantes dans docs/DECISIONS.md.
   ou cité), type de document, section, articles rétractés exclus par défaut.
 - Tests : `test_rag.py` (SQLite, embeddings factices) et `test_rag_pgvector.py` (PostgreSQL ;
   la CI a maintenant un service `pgvector/pgvector:pg16` dans le job backend).
+
+## Tâche 3 : agent LangGraph et `/api/chat` (fait)
+- **Outils** (`backend/app/rag/tools.py`, outils LangChain `StructuredTool`, mêmes fonctions
+  que le serveur MCP) : `identify_pills` (la logique de `/api/scan`), `check_interaction`
+  (celle de `/api/interactions`, extraite dans `interactions_report` sans changer la route),
+  `get_drug_info` (classes de comprimés + extraits de la notice), `search_documents`
+  (recherche hybride avec filtres). Point d'extension documenté pour `predict_toxicity`
+  (Tox21 / ClinTox) et `predict_synergy` (DrugComb), non implémentés, ajoutés en Bonus dans
+  la feuille de route.
+- **Graphe LangGraph** : `understand` (noms de médicaments en français ou en anglais,
+  comprimés confirmés, langue, question de dose) -> `tools` (le LLM choisit par appel
+  d'outils Ollama ; le graphe ajoute `check_interaction` pour deux médicaments ou plus et
+  `search_documents` toujours, D64) -> `retrieve` (sources numérotées) -> `answer` (réponse
+  uniquement à partir des sources, citations [n], en streaming) -> `safety` (D63).
+- **Contrôle de sécurité** : phrases avec dose retirées (sauf valeurs biologiques comme
+  « mL/min »), phrases « sûr / sans danger / safe » retirées et remplacées par « aucune
+  interaction connue dans cette base de données » si rien n'est trouvé, conseils d'horaire
+  non sourcés retirés, citations hors limites retirées, phrase non citée rattachée à la source
+  qui contient au moins 60 % de ses mots, aucune source = pas de réponse, avertissement
+  toujours à la fin ; question de dose refusée sans appeler le LLM. En streaming, les phrases
+  interdites ne sont jamais affichées.
+- **`POST /api/chat`** (asynchrone, connexion requise) : `answer`, `citations` (titre, URL,
+  section, extrait, `cited`), `tool_calls` (nom, arguments, `chosen_by` llm/rule, résumé),
+  `safety`, `timings` ; `stream: true` -> SSE `tool`, `token`, `final`. URL d'Ollama par
+  `SYNERGYRX_OLLAMA_URL` (`http://ollama:11434` dans le compose) ; nouveau service ponctuel
+  `rag-init` (télécharge les modèles si besoin puis indexe).
+- **Essais réels** (qwen2.5:3b + bge-m3, GPU) : « La warfarine interagit-elle avec le
+  fluconazole ? » -> le LLM a lui-même appelé `check_interaction`, réponse avec DDInter
+  (Major) cité [1] ; « What are the contraindications of metformin? » -> réponse correcte
+  (insuffisance rénale sévère, hypersensibilité, acidose métabolique) citée [1]. Environ
+  13 à 15 s par question (planificateur ~7 s, réponse ~6 s). Deux corrections après ces
+  essais : « eGFR 30 mL/min » n'est plus pris pour une dose ; une phrase recopiée d'une notice
+  sans citation est rattachée à cette notice.
+- Tests : `test_chat.py` (8, LLM factice scripté, embeddings factices) et `test_safety.py`
+  (9) ; 94 tests backend passent.
