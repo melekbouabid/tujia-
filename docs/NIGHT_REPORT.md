@@ -24,7 +24,7 @@ images 4,8 + ~0,1 de fichiers abandonnés ; venv vision ~0,7).
 | 3. Sous-ensemble d'entraînement | fait (DVC sans remote) | voir journal du README |
 | 4. Principes actifs et interactions | fait | voir journal du README |
 | 5. Infrastructure | fait | voir journal du README |
-| 6. Pipeline vision | à faire | |
+| 6. Pipeline vision | identification faite ; détection en cours | voir journal du README |
 | 7. CI | à faire | |
 
 ## Détail par tâche
@@ -91,6 +91,19 @@ images 4,8 + ~0,1 de fichiers abandonnés ; venv vision ~0,7).
 - 3 tests ajoutés (SQLite) ; 37 tests backend passent. Ajout de `psycopg[binary]`.
 - Doc : `docs/INFRA.md`. Backend et frontend ne sont pas encore dans le compose.
 
+### Tâche 6 : pipeline vision (identification faite, détection en cours)
+- Matériel : RTX 2050 4 Go. Le venv a d'abord reçu PyTorch CPU (bande passante réservée aux
+  images), puis PyTorch 2.14.1 CUDA 13.0 (2 Go) une fois les images téléchargées (D40).
+- Boîtes : aucune annotation dans C3PI, donc étiquetage automatique des photos consumer
+  (D38) : 3 306/4 056 photos propres (81,5 %), précision ~90 % sur un audit visuel de 48
+  photos. Les photos douteuses sont exclues des deux jeux de données.
+- Identification : YOLO11s-cls sur des crops de 224 px (D39), 40 époques GPU (14 min) :
+  **test top-1 93,5 %, top-5 98,1 %** sur 589 crops. Attention : mêmes comprimés physiques
+  photographiés plusieurs fois entre train et test, crops issus des boîtes automatiques.
+- MLflow : expérience `tujya-vision`, modèle `tujya-pill-classifier` v1 (essai CPU) et v2.
+- ONNX : export + vérification ONNX Runtime vs PyTorch (100 % d'accord top-1).
+- Doc : `docs/VISION.md` ; étape DVC `prepare` dans `dvc.yaml`.
+
 ## Problèmes rencontrés
 - pandas 3.1.0 incompatible avec l'étape `build` du pipeline (D26).
 - `.venv` racine cassé (D27).
@@ -104,8 +117,9 @@ images 4,8 + ~0,1 de fichiers abandonnés ; venv vision ~0,7).
 - D29 à D31 : métadonnées XML, classe = NDC9 + part, types d'images utilisés.
 - D32 (150 classes, deux appareils exclus), D33 (split et emplacement des listes).
 - D34 à D37 : RxNav, activation de DDInter par une étape Tujya, description, email de contact.
+- D38 à D41 : boîtes automatiques, crops pour l'identification, PyTorch CPU puis CUDA, modèles ONNX enregistrés.
 - L'identité git est « Votre Nom <vous@example.com> » (déjà dans le commit initial) : je
   ne l'ai pas changée ; à corriger avec `git config user.name/user.email` si souhaité.
 
 ## Prochaines étapes
-- Tâche 6 : auto-étiquetage, entraînement identification et détection, MLflow, ONNX.
+- Tâche 6 (suite) : finir la détection, évaluation de bout en bout ; puis tâche 7 (CI).
