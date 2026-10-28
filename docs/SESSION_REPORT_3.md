@@ -116,3 +116,15 @@ et suivantes dans docs/DECISIONS.md.
   sans citation est rattachée à cette notice.
 - Tests : `test_chat.py` (8, LLM factice scripté, embeddings factices) et `test_safety.py`
   (9) ; 94 tests backend passent.
+
+## Tâche 4 : serveur MCP (fait)
+- `backend/app/mcp_server.py` : SDK Python officiel (`mcp` 2.3 ; dans cette version FastMCP
+  s'appelle `MCPServer`), mêmes 4 outils que l'agent (mêmes fonctions de `Toolbox`), consignes
+  de sécurité dans les `instructions` du serveur. Lancement : `python -m app.mcp_server`
+  (stdio) ou `--transport streamable-http --port 8765`.
+- Essai réel : `scripts/mcp_smoke.py` démarre le serveur en sous-processus (stdio), liste les
+  outils et en appelle deux sur PostgreSQL : warfarine + fluconazole -> Major ; recherche
+  « metformin lactic acidosis » -> notices de la metformine.
+- Documentation de connexion (Claude Desktop, Claude Code, client HTTP) : `docs/MCP.md`.
+- Tests : `test_mcp.py` (client MCP en mémoire) : liste des outils et schémas, deux appels, une
+  erreur propre pour une image absente.
