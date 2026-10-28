@@ -15,7 +15,7 @@ le détail est aussi dans le « Journal de progression » du README.
 | 1. Swagger sur `/docs` | fait |
 | 2. API de scan | fait |
 | 3. API d'interactions | fait |
-| 4. Page Scanner | à faire |
+| 4. Page Scanner | fait |
 | 5. Docker Compose complet | à faire |
 | 6. CD (ghcr.io) | à faire |
 
@@ -60,10 +60,28 @@ le détail est aussi dans le « Journal de progression » du README.
 - Tables PostgreSQL du chargeur ; 16 tests sur SQLite ; 69 tests backend au total.
 - Case « Backend FastAPI asynchrone, schémas Pydantic, Swagger sur `/docs` » cochée.
 
+### Tâche 4 : page Scanner (fait)
+- Page « Scanner » dans l'application React existante (même style, comptes connectés) :
+  upload (glisser-déposer), webcam (capture d'une image ; prédictions en direct sur la vidéo
+  environ chaque seconde), galerie de démo. Boîtes et étiquettes dessinées en SVG sur la photo ;
+  pour chaque comprimé : top-5 avec probabilités, badge « Please confirm » sous 0,85, recherche
+  d'un autre comprimé (`GET /api/pills`), bouton de confirmation. Liste « My pills » sur
+  plusieurs photos ; dès deux comprimés différents, vérification des interactions, affichée
+  par sévérité avec sources, citations et l'avertissement.
+- Galerie : 8 photos du split de test (D52), servies par `GET /api/demo/images` (lecture seule,
+  uniquement des photos du split de test listées dans `config/demo_gallery.csv`), jamais
+  commitées. 5 tests backend.
+- Interface en anglais comme le reste du site ; textes de sécurité en français mot pour mot (D53).
+- Preuve : `npm run build` passe ; `frontend/scripts/screenshots.mjs` (Playwright, D54) a fait
+  tout le parcours et enregistré 7 captures dans `docs/screenshots/` (voir la fin du rapport).
+
 ## Problèmes rencontrés
 - Tâche 2 : la première évaluation sur la validation était 30 fois trop lente (plus de 25 min) :
   les threads d'ONNX Runtime restent en attente active après chaque inférence et privent OpenCV
   de CPU. Attente active désactivée (D49) : 3 min pour 600 photos.
+- Tâche 4 : une classe CSS `.source-list` existait déjà (page d'accueil) et cassait la mise en
+  page des sources : renommée `.cited-sources`. Les premières captures montraient les cartes à
+  moitié transparentes (animation d'entrée) : le script attend la fin des animations.
 - Tâche 2 : les modèles téléchargés depuis le Model Registry ne faisaient que 60 à 140 Ko :
   MLflow garde les poids dans un fichier séparé ; `publish` les réunit en un seul fichier.
 
