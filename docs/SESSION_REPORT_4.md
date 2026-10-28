@@ -34,3 +34,32 @@ docs/DECISIONS.md.
 - Remarque : dans les conteneurs, uvicorn, MLflow et nginx écoutent toujours sur `0.0.0.0`,
   mais c'est l'interface privée du conteneur, joignable seulement par la redirection de port
   de Docker, elle-même limitée à `127.0.0.1`.
+
+## Tâche 2 : CD sans publication (fait, sauf la suppression des anciens paquets)
+- `.github/workflows/cd.yml` : sur une CI verte d'un push vers `main`, le job `images`
+  construit les images backend et frontend du commit testé (`load: true`, `push: false`) et
+  les teste (backend : `/api/health`, `/docs`, `/api/scan` et `/api/chat` dans
+  `/openapi.json` ; frontend : `/` et `/scan`), ports du runner sur `127.0.0.1`. Permissions
+  du workflow : `contents: read` seulement. Plus d'artefact « build record » attaché au run.
+- L'envoi sur ghcr.io n'existe plus que dans un job séparé `publish`, lancé à la main
+  (`gh workflow run cd -f push_images=true`), désactivé par défaut, seul job avec
+  `packages: write` (D70). CI inchangée.
+- Vérifié avec `gh` : CI 40768873414 verte, puis CD 40769096658 verte : « frontend image
+  (build + smoke test) » 22 s, « backend image (build + smoke test) » 41 s, job `publish`
+  ignoré ; résumé du run : « Built and smoke-tested at 7d0fbbd. **Not pushed** ».
+- **Attention** : le commit de la tâche 1 (`2222e1b`) a encore déclenché l'ancienne CD
+  (run 40768854950, avant le changement du workflow) : elle a poussé
+  `tujya-backend:sha-2222e1b` et `tujya-frontend:sha-2222e1b` (et `latest`). C'est la
+  dernière publication.
+- **Suppression des paquets ghcr.io : impossible depuis ici.** Le jeton `gh` local a les
+  droits `gist, read:org, repo, user, workflow`, sans `read:packages` ni `delete:packages`
+  (`gh api -X DELETE user/packages/container/tujya-backend` -> 403). Je n'ai pas modifié
+  votre connexion `gh`. À faire vous-même (2 minutes) :
+  1. github.com -> votre profil -> onglet **Packages** -> `tujya-backend` -> **Package
+     settings** (en bas à droite) -> **Danger zone** -> **Delete this package** -> taper le
+     nom pour confirmer ;
+  2. pareil pour `tujya-frontend` ;
+  3. ou en ligne de commande : `gh auth refresh -h github.com -s read:packages,delete:packages`
+     puis `gh api -X DELETE user/packages/container/tujya-backend` et
+     `gh api -X DELETE user/packages/container/tujya-frontend` (détails dans docs/CD.md).
+  Les paquets étaient privés et ne contiennent que du code (ni données, ni modèles, ni secret).
