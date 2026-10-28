@@ -100,3 +100,37 @@ docs/DECISIONS.md.
   commandes pour passer à Google Drive ou S3 (non configurés). Case « DVC » cochée.
 - À savoir : le remote est sur le même disque que le dépôt : ce n'est pas une sauvegarde.
   Copiez `C:\Users\msi\dvc-storage\tujya` sur un disque externe.
+
+## Tâche 4 : script de démo et questions du jury (fait)
+- **docs/DEMO.md** : script de 15 étapes (≈ 14 min) : problème, architecture, scan des
+  photos de démo, cas incertain, webcam, interactions, chat cité, dose refusée, Swagger,
+  MLflow (vision, RAG, registre), DVC, GitHub Actions, MCP, benchmark, limites. Pour chaque
+  étape : quoi cliquer ou taper, ce que le jury voit, une phrase à dire. Plus une
+  préparation (dont le **préchauffage du LLM**) et un plan B.
+- **docs/QUESTIONS_JURY.md** : 25 questions avec réponses courtes et chiffrées (données,
+  étiquetage automatique, limites du split, ONNX, seuil 0,85, qwen2.5:3b, RAG, BM25 contre
+  dense, benchmark, sécurité, licences, local, CI/CD, suite).
+- **Répétition complète sur les conteneurs** (Playwright + CLI), résultats :
+
+| Étape | Commande / script | Résultat |
+|---|---|---|
+| Scan, upload, démo, interactions, cas incertain, webcam, Swagger | `BASE=http://localhost:8080 node scripts/screenshots.mjs` | OK en 29 s (toutes les vérifications du script passent) |
+| Chat, citation, dose refusée | `BASE=http://localhost:8080 node scripts/chat-screenshots.mjs` | OK ; 1re réponse **83,9 s** (modèles pas encore chargés après le redémarrage de la tâche 1), 2e passage **5,6 s** ; DDInter Major cité [1], une phrase retirée par le contrôle de sécurité, dose refusée |
+| MLflow | nouveau `node scripts/mlflow-screenshots.mjs` | expériences `tujya-vision` (4 runs) et `tujya-rag`, registre : classifieur v2, détecteur v1 ; captures 12 à 15 |
+| Agent en CLI | `scripts/ask.py` | dose refusée en 3,1 s sans LLM ; « contraindications of metformin » : réponse citée [1] (insuffisance rénale sévère, hypersensibilité, acidose métabolique) en 15 s |
+| MCP | `scripts/mcp_smoke.py` | 4 outils, warfarine + fluconazole Major, notices de la metformine ; **2 min 34 s, puis 11 s après correction** (ci-dessous) |
+| DVC | `dvc status`, `dvc status -c`, `dvc remote list`, `dvc dag` | à jour, synchronisé, `localstore (default)`, étapes `prepare` et `rag_corpus` |
+| CI/CD | `gh run list` | CI et CD vertes |
+| Swagger, MLflow, site | curl | 200 |
+
+- **Corrigé grâce à la répétition (D72)** : depuis la tâche 1, Docker n'écoute que sur
+  l'IPv4 `127.0.0.1`. Sur ce PC, `localhost` est d'abord résolu en `::1` : les navigateurs
+  et curl repassent tout de suite en IPv4, mais libpq (psycopg) attendait **65 à 100 s** par
+  connexion (mesuré : `127.0.0.1` 0,0 s, `localhost` 100 s). Toutes les adresses côté PC
+  (URL par défaut d'Ollama et de MLflow dans le code, chaînes de connexion de la
+  documentation) passent à `127.0.0.1`. Le smoke test MCP passe de 2 min 34 à 11 s. Tests
+  backend et vision toujours verts.
+- Ce qui reste à essayer vous-même : la **vraie webcam** avec de vrais comprimés (seule la
+  caméra factice de Chromium a été testée), et le préchauffage du LLM avant la soutenance.
+- Les cases « Soutenance pratique » et « Démonstration » ne sont pas cochées : elles le
+  seront après la soutenance.
