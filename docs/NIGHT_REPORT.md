@@ -4,7 +4,7 @@ Travail autonome pendant la nuit, tâches 1 à 7 dans l'ordre. Le détail de cha
 est aussi dans le « Journal de progression » du README.
 
 ## Environnement constaté
-- Dépôt dans `Proj/` (commit initial `c1cb26d`), branche `main`, remote `origin` GitHub.
+- Dépôt dans `Proj/` (commit initial `9398f0c`), branche `main`, remote `origin` GitHub.
 - Windows 11, 16 cœurs logiques, 296 Go libres sur C:.
 - GPU : NVIDIA GeForce RTX 2050, 4 Go de VRAM (pilote 610.78, CUDA 13.3).
 - Docker 29.7.2, serveur Docker Desktop actif.
@@ -172,8 +172,9 @@ poids YOLO ~0,05. Le facteur limitant a été le débit (~0,5 à 1,5 Mo/s), pas 
   sans email de contact (pas de `.env`, je n'ai pas utilisé votre adresse).
 - **D38** boîtes de détection automatiques (pas d'annotation manuelle) ; D39 crops ; D40
   PyTorch CUDA ; D41 modèles ONNX enregistrés ; D42 auto-install ; D43 étape DVC.
-- L'identité git est « Votre Nom <vous@example.com> » (déjà dans le commit initial) : je ne
-  l'ai pas changée. À corriger avec `git config user.name` / `user.email` si souhaité.
+- L'identité git « Votre Nom <vous@example.com> » a été remplacée par « Melek Bouabid
+  <melekbouabid62@gmail.com> » dans tous les commits (dates d'origine conservées) ; les
+  hashes ont changé (commit initial : `9398f0c`).
 - Les conteneurs `tujya-postgres-1` et `tujya-mlflow-1` tournent encore (`docker compose
   down` pour les arrêter ; les volumes sont conservés).
 - Le mot de passe admin par défaut (admin@gmail.com / admin) n'a pas été changé.
