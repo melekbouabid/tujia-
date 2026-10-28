@@ -262,6 +262,9 @@ technique et démonstration.
 - Les deux premiers lancements complets de l'agent sur le benchmark se sont bloqués
   (échanges de modèles sur le GPU, puis réponse sans fin) : causes trouvées et corrigées
   (D68) ; le run retenu est le troisième.
+- La CI a échoué une fois (run 40763103898) sur une ligne trop longue d'un script de
+  benchmark ; corrigé au commit suivant : CI 40763387881 et CD 40763594310 vertes (images
+  backend et frontend publiées sur ghcr.io avec l'agent).
 - Toujours pas de remote DVC : le corpus est versionné mais seulement en cache local.
 - La règle de sécurité est faite d'expressions régulières (français, anglais) : une dose
   écrite autrement pourrait passer ; elle retire aussi des phrases sans danger (« bien sûr »,
