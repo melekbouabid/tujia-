@@ -1,7 +1,7 @@
 # Rapport de nuit (2026-10-27 -> 2026-10-28)
 
-Travail autonome pendant la nuit, tâches 1 à 7 dans l'ordre. Ce fichier est mis à jour
-après chaque tâche pour pouvoir reprendre le travail si la session s'arrête.
+Travail autonome pendant la nuit, tâches 1 à 7 dans l'ordre. Le détail de chaque tâche
+est aussi dans le « Journal de progression » du README.
 
 ## Environnement constaté
 - Dépôt dans `Proj/` (commit initial `c1cb26d`), branche `main`, remote `origin` GitHub.
@@ -11,21 +11,48 @@ après chaque tâche pour pouvoir reprendre le travail si la session s'arrête.
 - Node 24.19.0, npm 12.0.2. Python 3.14.7 (le Python 3.12 « Astral » listé par `py` est introuvable).
 - Le `.venv` racine vient d'une autre machine et ne démarre pas : laissé intact, nouveau `.venv-dev`.
 
+## Résumé (à lire en premier)
+
+Les 7 tâches sont faites. Tout est commité et poussé sur `main` (aucun force push).
+
+| Chiffre | Valeur |
+|---|---|
+| Classes de comprimés (C3PI) | 150 (24 à 30 photos consumer chacune) |
+| Images téléchargées | 4 206 fichiers, 4,8 Go, 0 échec, suivies par DVC |
+| Photos étiquetées automatiquement (boîtes) | 3 306 / 4 056 (81,5 %), précision ~90 % (audit de 48) |
+| Identification (YOLO11s-cls) | test top-1 **93,5 %**, top-5 **98,1 %** (589 crops) |
+| Détection (YOLO11n) | test mAP50 **0,972**, mAP50-95 **0,861** |
+| Bout en bout, ONNX (600 photos de test) | détecté 98,5 %, top-1 **89,2 %**, top-5 **95,8 %** |
+| Classes avec principe(s) actif(s) (RxNav) | 149 / 150 (82 principes actifs) |
+| Paires d'interactions DDInter entre ces principes actifs | 2 350 (125 Major) ; 40 508 avec n'importe quel médicament |
+| Tests | 279 pipeline + 37 backend + 14 vision, tous verts ; CI GitHub verte |
+| Téléchargement total | ~9 Go sur 20 Go autorisés |
+
+Attention en lisant les scores : train et test contiennent des photos différentes des
+mêmes comprimés physiques, et les boîtes de référence sont automatiques (docs/VISION.md).
+
+Cases cochées dans « Exigences des modules » : détection YOLO, identification par
+transfer learning, MLflow tracking, MLflow Model Registry, ONNX + ONNX Runtime. Non
+cochées (partielles) : DVC (pas de remote), Docker Compose (pas de backend/frontend),
+CI/CD (CI seulement), dépôt GitHub documenté (à juger par vous).
+
 ## Budget de téléchargement
-Utilisé à la fin de la tâche 3 : ~6,3 Go (échantillon 0,52 ; XML 0,13 ; DDInter 0,02 ;
-images 4,8 + ~0,1 de fichiers abandonnés ; venv vision ~0,7).
+~9 Go au total : échantillon 0,52 ; XML 0,13 ; DDInter 0,02 ; images 4,8 (+ ~0,1 de fichiers
+d'une première sélection, supprimés) ; venv vision ~0,7 ; PyTorch CUDA 2,0 ;
+onnxruntime-gpu (installé tout seul par Ultralytics, D42) ~0,3 ; images Docker ~0,3 ;
+poids YOLO ~0,05. Le facteur limitant a été le débit (~0,5 à 1,5 Mo/s), pas le budget.
 
 ## Avancement
 
-| Tâche | État | Commit |
-|---|---|---|
-| 1. README et règles du projet | fait | voir journal du README |
-| 2. Exploration C3PI | fait | voir journal du README |
-| 3. Sous-ensemble d'entraînement | fait (DVC sans remote) | voir journal du README |
-| 4. Principes actifs et interactions | fait | voir journal du README |
-| 5. Infrastructure | fait | voir journal du README |
-| 6. Pipeline vision | identification faite ; détection en cours | voir journal du README |
-| 7. CI | à faire | |
+| Tâche | État |
+|---|---|
+| 1. README et règles du projet | fait |
+| 2. Exploration C3PI | fait |
+| 3. Sous-ensemble d'entraînement | fait (DVC sans remote) |
+| 4. Principes actifs et interactions | fait |
+| 5. Infrastructure | fait (postgres + MLflow ; backend/frontend pas encore dans le compose) |
+| 6. Pipeline vision | fait (identification, détection, MLflow, registry, ONNX, bout en bout) |
+| 7. CI | fait (4 jobs verts sur GitHub) |
 
 ## Détail par tâche
 
@@ -91,7 +118,7 @@ images 4,8 + ~0,1 de fichiers abandonnés ; venv vision ~0,7).
 - 3 tests ajoutés (SQLite) ; 37 tests backend passent. Ajout de `psycopg[binary]`.
 - Doc : `docs/INFRA.md`. Backend et frontend ne sont pas encore dans le compose.
 
-### Tâche 6 : pipeline vision (identification faite, détection en cours)
+### Tâche 6 : pipeline vision (fait)
 - Matériel : RTX 2050 4 Go. Le venv a d'abord reçu PyTorch CPU (bande passante réservée aux
   images), puis PyTorch 2.14.1 CUDA 13.0 (2 Go) une fois les images téléchargées (D40).
 - Boîtes : aucune annotation dans C3PI, donc étiquetage automatique des photos consumer
@@ -102,24 +129,76 @@ images 4,8 + ~0,1 de fichiers abandonnés ; venv vision ~0,7).
   photographiés plusieurs fois entre train et test, crops issus des boîtes automatiques.
 - MLflow : expérience `tujya-vision`, modèle `tujya-pill-classifier` v1 (essai CPU) et v2.
 - ONNX : export + vérification ONNX Runtime vs PyTorch (100 % d'accord top-1).
-- Doc : `docs/VISION.md` ; étape DVC `prepare` dans `dvc.yaml`.
+- Détection : YOLO11n, 30 époques GPU sur les boîtes automatiques : **mAP50 0,972,
+  mAP50-95 0,861** (précision 0,957, rappel 0,936) sur 483 photos de test, mesurés par
+  rapport aux boîtes automatiques. `tujya-pill-detector` v1 dans MLflow.
+- Bout en bout (détecteur -> crop -> classifieur, les deux en ONNX) sur les 600 photos de
+  test, y compris celles que l'auto-étiquetage avait rejetées : comprimé trouvé sur
+  98,5 %, **top-1 89,2 %, top-5 95,8 %**.
+- Doc : `docs/VISION.md` ; étape DVC `prepare` (`dvc.yaml`, `dvc.lock`).
+
+### Tâche 7 : CI (fait)
+- `.github/workflows/ci.yml` : 4 jobs (pipeline : ruff, format, mypy, tests unitaires ;
+  backend : ruff, format, pytest ; vision : ruff, format, tests sans entraînement ;
+  frontend : `npm ci` + build). Aucun test réseau en direct.
+- Vérifié en local, puis sur GitHub Actions : run 40616884118, **4 jobs verts** du premier
+  coup.
 
 ## Problèmes rencontrés
-- pandas 3.1.0 incompatible avec l'étape `build` du pipeline (D26).
-- `.venv` racine cassé (D27).
-- Débit Internet faible (~0,5 à 0,9 Mo/s) : c'est lui, pas le budget de 20 Go, qui limite
-  la taille du sous-ensemble d'images.
-- 316 fichiers listés deux fois dans les XML : sélection corrigée (comptés une fois) puis
-  relancée.
+- pandas 3.1.0 casse 3 tests de bout en bout du pipeline : plafonné à `<3.1` (D26).
+- `.venv` racine créé sur une autre machine, inutilisable : laissé intact, `.venv-dev` (D27).
+- Débit Internet faible : sous-ensemble limité à 150 classes et à 7 des 9 appareils (D32).
+- 316 fichiers listés deux fois dans les XML : sélection corrigée puis relancée ; 38 images
+  de la première sélection (téléchargées par moi) supprimées.
+- Activer DDInter dans `config.yaml` cassait 2 tests existants qui imposent qu'il soit
+  désactivé par défaut : config partagée inchangée, activation par l'étape Tujya (D35).
+- Fins de ligne mélangées dans le dépôt (CRLF/LF) ; `sed` avait converti `pyproject.toml`
+  en LF dans le commit de la tâche 1 (diff du fichier entier), corrigé au commit suivant ;
+  règle ajoutée dans CLAUDE.md.
+- Auto-étiquetage : premières versions mauvaises (vignettage, pièces de monnaie, ombres) ;
+  4 itérations avec contrôle visuel avant le passage complet.
+- Ultralytics a installé `onnxruntime-gpu` de lui-même pendant l'évaluation (D42) :
+  auto-installation désactivée ensuite. Les deux runtimes sont dans le venv vision.
+- Aucune tâche abandonnée.
 
-## Décisions à relire
-- D26 (plafond pandas), D27 (`.venv-dev`), D28 (langue des docs) dans docs/DECISIONS.md.
-- D29 à D31 : métadonnées XML, classe = NDC9 + part, types d'images utilisés.
-- D32 (150 classes, deux appareils exclus), D33 (split et emplacement des listes).
-- D34 à D37 : RxNav, activation de DDInter par une étape Tujya, description, email de contact.
-- D38 à D41 : boîtes automatiques, crops pour l'identification, PyTorch CPU puis CUDA, modèles ONNX enregistrés.
-- L'identité git est « Votre Nom <vous@example.com> » (déjà dans le commit initial) : je
-  ne l'ai pas changée ; à corriger avec `git config user.name/user.email` si souhaité.
+## Décisions à relire (docs/DECISIONS.md)
+- D26 plafond pandas ; D27 `.venv-dev` ; D28 langue des docs.
+- D29-D31 métadonnées XML, classe = NDC9 + part, types d'images utilisés.
+- **D32** 150 classes et exclusion des appareils Canon G10 / Nikon S3000 (pour 200
+  classes : relancer `select` sans `--exclude-camera`, ~18 Go).
+- D33 split par photo (mêmes comprimés physiques en train et en test).
+- D34 RxNav ; **D35** DDInter activé par `python -m synergyrx_data.tujya ddinter` et non
+  dans `config.yaml` ; **D36** description DDInter minimale ; **D37** appels RxNav/DDInter
+  sans email de contact (pas de `.env`, je n'ai pas utilisé votre adresse).
+- **D38** boîtes de détection automatiques (pas d'annotation manuelle) ; D39 crops ; D40
+  PyTorch CUDA ; D41 modèles ONNX enregistrés ; D42 auto-install ; D43 étape DVC.
+- L'identité git est « Votre Nom <vous@example.com> » (déjà dans le commit initial) : je ne
+  l'ai pas changée. À corriger avec `git config user.name` / `user.email` si souhaité.
+- Les conteneurs `tujya-postgres-1` et `tujya-mlflow-1` tournent encore (`docker compose
+  down` pour les arrêter ; les volumes sont conservés).
+- Le mot de passe admin par défaut (admin@gmail.com / admin) n'a pas été changé.
 
-## Prochaines étapes
-- Tâche 6 (suite) : finir la détection, évaluation de bout en bout ; puis tâche 7 (CI).
+## Prochaines étapes (dans l'ordre conseillé)
+1. **DVC remote** : choisir un stockage (Google Drive, S3, disque externe), puis
+   `dvc remote add -d ...` et `dvc push`, et cocher la case DVC.
+2. **API** : `POST /api/scan` (ONNX Runtime : détecteur + classifieur, top-5 et confiance,
+   demande de confirmation sous un seuil) et `POST /api/interactions` sur les tables
+   PostgreSQL. Swagger : l'app sert la doc sur `/api/docs`, l'exigence dit `/docs` (à
+   aligner ou à justifier).
+3. **Frontend** : page Scan (upload, webcam, boîtes) avec les images de test C3PI.
+4. **Docker Compose** : ajouter backend et frontend (puis Ollama) ; **CD** dans GitHub Actions.
+5. **Qualité des boîtes** : vérifier à la main les boîtes du split test, ou refaire un
+   passage d'étiquetage avec le détecteur entraîné ; mesurer l'identification sur d'autres
+   exemplaires physiques ; comparaison honnête avec ePillID sur son propre split.
+6. **Module 2** : corpus RAG openFDA (notices des 82 principes actifs), pgvector + BM25,
+   agent LangGraph avec outils (`identify_pills`, `check_interaction`...), benchmark.
+
+## Reprendre le travail
+```bash
+docker compose up -d                       # PostgreSQL + MLflow (http://localhost:5000)
+vision/.venv/Scripts/activate              # venv vision (GPU)
+dvc status                                 # données et étape prepare à jour
+cd vision && python -m tujya_vision.train classify --weights yolo11s-cls.pt --epochs 40
+```
+Modèles : `vision/runs/classify-20261028-021601/weights/best.onnx` et
+`vision/runs/detect-20261028-023214/weights/best.onnx` (aussi dans le Model Registry).
